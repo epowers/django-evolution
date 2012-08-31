@@ -39,6 +39,10 @@ class Command(BaseCommand):
             default=False,
             help='Apply the evolution to the database.'),
         make_option(
+            '-f', '--force', action='store_true', dest='force',
+            default=False,
+            help='Force an update of the evolution signature.'),
+        make_option(
             '--database', action='store', dest='database',
             help='Nominates a database to synchronize.'),
     )
@@ -66,6 +70,7 @@ class Command(BaseCommand):
         compile_sql = options['compile_sql']
         hint = options['hint']
         purge = options['purge']
+        force = options['force']
         database = options['database']
 
         if not database and is_multi_db():
@@ -267,9 +272,13 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                     else:
                         cursor = connection.cursor()
 
-                    try:
-                        # Perform the SQL
-                        execute_sql(cursor, sql)
+                    if force:
+                        try:
+                            # Perform the SQL
+                            execute_sql(cursor, sql)
+
+                        except Exception, ex:
+                            print self.style.ERROR('Error applying evolution: %s' % str(ex))
 
                         # Now update the evolution table
                         version = Version(signature=current_signature)
@@ -280,10 +289,24 @@ Type 'yes' to continue, or 'no' to cancel: """ % database)
                             evolution.save(**using_args)
 
                         transaction.commit(**using_args)
-                    except Exception, ex:
-                        transaction.rollback(**using_args)
-                        raise CommandError('Error applying evolution: %s'
-                                           % str(ex))
+                    else:
+                        try:
+                            # Perform the SQL
+                            execute_sql(cursor, sql)
+
+                            # Now update the evolution table
+                            version = Version(signature=current_signature)
+                            version.save(**using_args)
+
+                            for evolution in new_evolutions:
+                                evolution.version = version
+                                evolution.save(**using_args)
+
+                            transaction.commit(**using_args)
+                        except Exception, ex:
+                            transaction.rollback(**using_args)
+                            raise CommandError('Error applying evolution: %s'
+                                            % str(ex))
 
                     transaction.leave_transaction_management(**using_args)
 
