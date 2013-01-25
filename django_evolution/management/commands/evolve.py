@@ -138,18 +138,23 @@ class Command(BaseCommand):
                     evolution_required = True
 
                     for mutation in mutations:
-                        # Only compile SQL if we want to show it
-                        if compile_sql or execute:
-                            app_sql.extend(
-                                mutation.mutate(app_label, database_sig,
-                                                database))
-
-                        # Now run the simulation, which will modify the
-                        # signatures
                         try:
+                            # Only compile SQL if we want to show it
+                            if compile_sql or execute:
+                                app_sql.extend(
+                                    mutation.mutate(app_label, database_sig,
+                                                    database))
+
+                            # Now run the simulation, which will modify the
+                            # signatures
                             mutation.simulate(app_label, database_sig, database)
                         except CannotSimulate:
                             simulated = False
+                        except:
+                            if force:
+                                simulated = False
+                            else:
+                                raise
 
                     new_evolutions.extend(
                         Evolution(app_label=app_label, label=label)
