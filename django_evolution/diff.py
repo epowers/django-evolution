@@ -242,8 +242,8 @@ class Diff(object):
                             changed_attrs[prop] = current_field_sig[prop]
                         else:
                             changed_attrs[prop] = \
-                                current_field_sig.get(prop,
-                                                      ATTRIBUTE_DEFAULTS[prop])
+                                current_field_sig.get(prop,None) or \
+                                                      ATTRIBUTE_DEFAULTS[prop]
 
                     if (changed_attrs.has_key('null') and
                         current_field_sig['field_type'] !=
